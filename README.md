@@ -11,7 +11,7 @@ A notable feature is that external URLs embedded in the slides are clickable.
 - **Responsive Design**: Mobile and desktop compatible
 - **Keyboard Shortcuts**:
   - Left/Right arrow keys: Navigate pages
-  - F: Fullscreen mode
+  - F: Fullscreen mode(Only supported in PC browsers)
 - **Mouse Controls**:
   - Click left half of slide: Previous page
   - Click right half of slide: Next page
@@ -75,7 +75,7 @@ PDF化されたスライド資料をご自身のリポジトリ上にアップ�
 - **レスポンシブデザイン**: モバイル・デスクトップ対応
 - **キーボードショートカット**:
   - 左/右矢印キー: ページ移動
-  - F: フルスクリーンモード
+  - F: フルスクリーンモード(PCブラウザのみ対応)
 - **マウス操作**:
   - スライドの左半分をクリック: 前のページ
   - スライドの右半分をクリック: 次のページ
