@@ -31,6 +31,28 @@
             #pdfContainer {
                 padding: 10px;
             }
+            .header {
+                padding: 10px;
+                height: auto;
+                min-height: 60px;
+            }
+            .header h1 {
+                font-size: 14px;
+                max-width: 40%;
+            }
+            .controls {
+                gap: 5px;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+            .controls button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            .page-info {
+                font-size: 12px;
+                margin: 0 5px;
+            }
         }
         
 
@@ -106,7 +128,7 @@
             <button id="prevPage" onclick="previousPage()" disabled>Previous</button>
             <span class="page-info"><span id="currentPage">-</span> / <span id="totalPages">-</span></span>
             <button id="nextPage" onclick="nextPage()" disabled>Next</button>
-            <button onclick="toggleFullscreen()">Fullscreen</button>
+            <button id="fullscreenBtn" onclick="toggleFullscreen()" style="display: none;">Fullscreen</button>
             <button onclick="window.location.href='index.html'">Back to List</button>
         </div>
     </div>
@@ -132,6 +154,14 @@
         let scale = 1.5;
         let rendering = false;
 
+        // Check if device is mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        
+        // Show fullscreen button only on desktop
+        if (!isMobile) {
+            document.getElementById('fullscreenBtn').style.display = 'inline-block';
+        }
+        
         // Get PDF filename from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const pdfFilename = urlParams.get('pdf');
@@ -271,8 +301,11 @@
             if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
                 // Enter fullscreen
                 const elem = document.documentElement;
+                
                 if (elem.requestFullscreen) {
-                    elem.requestFullscreen();
+                    elem.requestFullscreen().catch(err => {
+                        console.log('Fullscreen error:', err);
+                    });
                 } else if (elem.webkitRequestFullscreen) {
                     elem.webkitRequestFullscreen();
                 } else if (elem.mozRequestFullScreen) {
