@@ -47,6 +47,21 @@
         .slide-card a:hover {
             text-decoration: underline;
         }
+        .footer {
+            text-align: center;
+            padding: 40px 20px 20px;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 40px;
+        }
+        .footer a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -55,6 +70,10 @@
     <div class="slide-grid" id="slideGrid">
         <!-- Slide cards will be dynamically added here -->
     </div>
+
+    <footer class="footer">
+        <p>&copy; <span id="year"></span> <span id="username"></span>. All rights reserved.</p>
+    </footer>
 
     <!-- Load PDF file list from external file -->
     <script src="pdf-files.js"></script>
@@ -82,8 +101,29 @@
             });
         }
 
+        // Get username from URL
+        function getUsernameFromURL() {
+            const hostname = window.location.hostname;
+            // Extract username from github.io URL pattern
+            if (hostname.includes('github.io')) {
+                const username = hostname.split('.')[0];
+                return username;
+            }
+            // For local development
+            return 'Developer';
+        }
+
+        // Set copyright info
+        function setCopyright() {
+            document.getElementById('year').textContent = new Date().getFullYear();
+            document.getElementById('username').textContent = getUsernameFromURL();
+        }
+
         // Execute after page load complete
-        document.addEventListener('DOMContentLoaded', renderSlides);
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSlides();
+            setCopyright();
+        });
     </script>
 </body>
 </html>

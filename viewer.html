@@ -23,8 +23,9 @@
         .controls button:disabled { background: #444; opacity: 0.5; cursor: not-allowed; }
         .page-info { color: #ccc; font-size: 14px; margin: 0 10px; }
         #pdfContainer {
-            height: calc(100vh - 60px); overflow: auto; background: #e5e5e5;
+            height: calc(100vh - 60px - 40px); overflow: auto; background: #e5e5e5;
             display: flex; justify-content: center; align-items: flex-start; padding: 20px;
+            padding-bottom: 60px;
         }
         
         @media (max-width: 768px) {
@@ -53,6 +54,20 @@
                 font-size: 12px;
                 margin: 0 5px;
             }
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(245, 245, 245, 0.95);
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+            z-index: 100;
         }
         
 
@@ -144,6 +159,10 @@
             <div class="navigation-area nav-right" onclick="nextPage()"></div>
         </div>
     </div>
+    
+    <footer class="footer">
+        <p>&copy; <span id="year"></span> <span id="username"></span>. All rights reserved.</p>
+    </footer>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -153,6 +172,27 @@
         let totalPages = 0;
         let scale = 1.5;
         let rendering = false;
+
+        // Get username from URL
+        function getUsernameFromURL() {
+            const hostname = window.location.hostname;
+            // Extract username from github.io URL pattern
+            if (hostname.includes('github.io')) {
+                const username = hostname.split('.')[0];
+                return username;
+            }
+            // For local development
+            return 'Developer';
+        }
+
+        // Set copyright info
+        function setCopyright() {
+            document.getElementById('year').textContent = new Date().getFullYear();
+            document.getElementById('username').textContent = getUsernameFromURL();
+        }
+
+        // Initialize copyright
+        setCopyright();
 
         // Check if device is mobile
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
