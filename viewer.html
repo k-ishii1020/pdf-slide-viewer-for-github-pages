@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; overflow: hidden; }
+        .header {
+            background: #333; color: white; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 60px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 18px; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        .controls button {
+            background: #555; color: white; border: none; padding: 8px 16px;
+            border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s;
+        }
+        .controls button:hover { background: #666; }
+        .controls button:disabled { background: #444; opacity: 0.5; cursor: not-allowed; }
+        .page-info { color: #ccc; font-size: 14px; margin: 0 10px; }
+        #pdfContainer {
+            height: calc(100vh - 60px); overflow: auto; background: #e5e5e5;
+            display: flex; justify-content: center; align-items: flex-start; padding: 20px;
+        }
+        
+
+        :fullscreen #pdfContainer,
+        :-webkit-full-screen #pdfContainer,
+        :-moz-full-screen #pdfContainer,
+        :-ms-fullscreen #pdfContainer {
+            height: 100vh;
+            padding: 0;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        :fullscreen body,
+        :-webkit-full-screen body,
+        :-moz-full-screen body,
+        :-ms-fullscreen body {
+            overflow: hidden;
+        }
+        
+        :fullscreen .header,
+        :-webkit-full-screen .header,
+        :-moz-full-screen .header,
+        :-ms-fullscreen .header {
+            display: none;
+        }
+        #pageContainer { position: relative; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        #pdfViewer { display: block; }
+        .navigation-area {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            cursor: pointer;
+            z-index: 500;
+        }
+        .nav-left {
+            left: 0;
+            cursor: pointer;
+        }
+        .nav-right {
+            right: 0;
+            cursor: pointer;
+        }
+        .link-overlay {
+            position: absolute; cursor: pointer; z-index: 1000;
+            background: transparent;
+        }
+        .link-overlay:hover { background: rgba(0, 100, 255, 0.1); }
+        .loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: #666;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3; border-top: 3px solid #333; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: #d32f2f; background: white;
+            padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .error h2 { margin-bottom: 10px; }
+        .error a { color: #0066cc; text-decoration: none; }
+        .error a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="pdfTitle">Loading PDF...</h1>
+        <div class="controls">
+            <button id="prevPage" onclick="previousPage()" disabled>Previous</button>
+            <span class="page-info"><span id="currentPage">-</span> / <span id="totalPages">-</span></span>
+            <button id="nextPage" onclick="nextPage()" disabled>Next</button>
+            <button onclick="toggleFullscreen()">Fullscreen</button>
+            <button onclick="window.location.href='index.html'">Back to List</button>
+        </div>
+    </div>
+    
+    <div id="pdfContainer">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading PDF...</p>
+        </div>
+        <div id="pageContainer" style="display: none;">
+            <canvas id="pdfViewer"></canvas>
+            <div class="navigation-area nav-left" onclick="previousPage()"></div>
+            <div class="navigation-area nav-right" onclick="nextPage()"></div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let scale = 1.5;
+        let rendering = false;
+
+        // Get PDF filename from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const pdfFilename = urlParams.get('pdf');
+        
+        if (!pdfFilename) {
+            showError('No PDF file specified');
+        } else {
+            document.getElementById('pdfTitle').textContent = decodeURIComponent(pdfFilename).replace('.pdf', '');
+            const pdfPath = `./PDF/${pdfFilename}`;
+            loadPDF(pdfPath);
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `
+                <h2>Error</h2>
+                <p>${message}</p>
+                <p style="margin-top: 20px;"><a href="index.html">Back to List</a></p>
+            `;
+            document.getElementById('pdfContainer').appendChild(errorDiv);
+        }
+
+        async function loadPDF(url) {
+            try {
+                const loadingTask = pdfjsLib.getDocument(url);
+                pdfDoc = await loadingTask.promise;
+                totalPages = pdfDoc.numPages;
+                
+                document.getElementById('totalPages').textContent = totalPages;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('pageContainer').style.display = 'block';
+                
+                renderPage(currentPage);
+                updateButtons();
+            } catch (error) {
+                console.error('PDF loading error:', error);
+                showError('Failed to load PDF');
+            }
+        }
+
+        async function renderPage(pageNumber) {
+            if (rendering) return;
+            rendering = true;
+            
+            try {
+                const page = await pdfDoc.getPage(pageNumber);
+                const currentScale = calculateFullscreenScale(page);
+                const viewport = page.getViewport({ scale: currentScale });
+                const canvas = document.getElementById('pdfViewer');
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                const pageContainer = document.getElementById('pageContainer');
+                pageContainer.style.width = canvas.width + 'px';
+                pageContainer.style.height = canvas.height + 'px';
+                
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                document.getElementById('currentPage').textContent = pageNumber;
+                
+                // Remove existing links
+                const existingLinks = pageContainer.querySelectorAll('.link-overlay');
+                existingLinks.forEach(link => link.remove());
+                
+                // Process annotations
+                const annotations = await page.getAnnotations();
+                
+                annotations.forEach((annotation) => {
+                    if (annotation.subtype === 'Link' && annotation.url) {
+                        createLinkOverlay(annotation, viewport, pageContainer);
+                    }
+                });
+                
+                rendering = false;
+                
+            } catch (error) {
+                console.error('Page rendering error:', error);
+                rendering = false;
+            }
+        }
+
+        function createLinkOverlay(annotation, viewport, container) {
+            // Get PDF coordinates and convert to viewport coordinates
+            const viewportRect = viewport.convertToViewportRectangle(annotation.rect);
+            
+            // Normalize (top-left to bottom-right)
+            const x1 = Math.min(viewportRect[0], viewportRect[2]);
+            const y1 = Math.min(viewportRect[1], viewportRect[3]);
+            const x2 = Math.max(viewportRect[0], viewportRect[2]);
+            const y2 = Math.max(viewportRect[1], viewportRect[3]);
+            
+            const width = x2 - x1;
+            const height = y2 - y1;
+            
+            // Create overlay element
+            const overlay = document.createElement('div');
+            overlay.className = 'link-overlay';
+            overlay.style.left = x1 + 'px';
+            overlay.style.top = y1 + 'px';
+            overlay.style.width = width + 'px';
+            overlay.style.height = height + 'px';
+            overlay.title = annotation.url;
+            
+            overlay.addEventListener('click', function() {
+                window.open(annotation.url, '_blank', 'noopener,noreferrer');
+            });
+            
+            container.appendChild(overlay);
+        }
+
+        function updateButtons() {
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+                updateButtons();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+                updateButtons();
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
+                // Enter fullscreen
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Monitor fullscreen state changes
+        function handleFullscreenChange() {
+            if (pdfDoc) {
+                // Re-render with slight delay
+                setTimeout(() => {
+                    renderPage(currentPage);
+                }, 100);
+            }
+        }
+
+        // Calculate scale for fullscreen mode
+        function calculateFullscreenScale(page) {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+            
+            if (isFullscreen) {
+                const viewport = page.getViewport({ scale: 1.0 });
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                const scaleX = screenWidth / viewport.width;
+                const scaleY = screenHeight / viewport.height;
+                
+                // Maintain aspect ratio and ensure it fits within screen
+                return Math.min(scaleX, scaleY) * 0.9; // Adjust to 90% to avoid scrolling
+            }
+            
+            return scale; // Normal scale
+        }
+
+        // Add fullscreen event listeners
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft': previousPage(); break;
+                case 'ArrowRight': nextPage(); break;
+                case 'f': case 'F': toggleFullscreen(); break;
+            }
+        });
+    </script>
+</body>
+</html>
