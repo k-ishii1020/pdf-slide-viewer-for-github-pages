@@ -134,7 +134,7 @@
             showError('No PDF file specified');
         } else {
             document.getElementById('pdfTitle').textContent = decodeURIComponent(pdfFilename).replace('.pdf', '');
-            const pdfPath = `./PDF/${pdfFilename}`;
+            const pdfPath = `./pdf/${pdfFilename}`;
             loadPDF(pdfPath);
         }
 
