@@ -171,7 +171,7 @@
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
-        let scale = 1.5;
+        let scale = 2.5;
         let rendering = false;
 
         // Get username from URL
@@ -196,7 +196,10 @@
         setCopyright();
 
         // Check if device is mobile
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        function isMobileDevice() {
+            return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        }
+        const isMobile = isMobileDevice();
         
         // Show fullscreen button only on desktop
         if (!isMobile) {
@@ -387,7 +390,7 @@
             const containerHeight = document.getElementById('pdfContainer').clientHeight;
             
             // For mobile devices, always fit to width
-            const isMobile = window.innerWidth <= 768;
+            const isMobile = isMobileDevice();
             
             if (isFullscreen) {
                 const screenWidth = window.innerWidth;
@@ -400,8 +403,11 @@
                 return Math.min(scaleX, scaleY) * 0.9; // Adjust to 90% to avoid scrolling
             } else {
                 // Normal viewing mode
-                const scaleX = (containerWidth - 40) / viewport.width; // 40px for padding
-                const scaleY = (containerHeight - 40) / viewport.height;
+                // Use actual padding values instead of fixed 40px
+                const isMobile = isMobileDevice();
+                const actualPadding = isMobile ? 20 : 40; // 10px*2 for mobile, 20px*2 for desktop
+                const scaleX = (containerWidth - actualPadding) / viewport.width;
+                const scaleY = (containerHeight - actualPadding) / viewport.height;
                 
                 if (isMobile) {
                     // On mobile, always fit to width for better readability
