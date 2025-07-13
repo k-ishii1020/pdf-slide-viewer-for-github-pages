@@ -27,6 +27,12 @@
             display: flex; justify-content: center; align-items: flex-start; padding: 20px;
         }
         
+        @media (max-width: 768px) {
+            #pdfContainer {
+                padding: 10px;
+            }
+        }
+        
 
         :fullscreen #pdfContainer,
         :-webkit-full-screen #pdfContainer,
@@ -302,8 +308,14 @@
         function calculateFullscreenScale(page) {
             const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
             
+            const viewport = page.getViewport({ scale: 1.0 });
+            const containerWidth = document.getElementById('pdfContainer').clientWidth;
+            const containerHeight = document.getElementById('pdfContainer').clientHeight;
+            
+            // For mobile devices, always fit to width
+            const isMobile = window.innerWidth <= 768;
+            
             if (isFullscreen) {
-                const viewport = page.getViewport({ scale: 1.0 });
                 const screenWidth = window.innerWidth;
                 const screenHeight = window.innerHeight;
                 
@@ -312,9 +324,19 @@
                 
                 // Maintain aspect ratio and ensure it fits within screen
                 return Math.min(scaleX, scaleY) * 0.9; // Adjust to 90% to avoid scrolling
+            } else {
+                // Normal viewing mode
+                const scaleX = (containerWidth - 40) / viewport.width; // 40px for padding
+                const scaleY = (containerHeight - 40) / viewport.height;
+                
+                if (isMobile) {
+                    // On mobile, always fit to width for better readability
+                    return scaleX;
+                } else {
+                    // On desktop, fit to container while maintaining aspect ratio
+                    return Math.min(scaleX, scaleY, scale);
+                }
             }
-            
-            return scale; // Normal scale
         }
 
         // Add fullscreen event listeners
