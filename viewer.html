@@ -31,6 +31,8 @@
         @media (max-width: 768px) {
             #pdfContainer {
                 padding: 10px;
+                overflow-x: auto;
+                overflow-y: auto;
             }
             .header {
                 padding: 10px;
@@ -95,7 +97,11 @@
             display: none;
         }
         #pageContainer { position: relative; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        #pdfViewer { display: block; }
+        #pdfViewer { 
+            display: block; 
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
         .navigation-area {
             position: absolute;
             top: 0;
@@ -213,7 +219,9 @@
         if (!pdfFilename) {
             showError('No PDF file specified');
         } else {
-            document.getElementById('pdfTitle').textContent = decodeURIComponent(pdfFilename).replace('.pdf', '');
+            const slideTitle = decodeURIComponent(pdfFilename).replace('.pdf', '');
+            document.getElementById('pdfTitle').textContent = slideTitle;
+            document.title = slideTitle; // ブラウザタブのタイトルを設定
             const pdfPath = `./pdf/${pdfFilename}`;
             loadPDF(pdfPath);
         }
@@ -259,12 +267,23 @@
                 const canvas = document.getElementById('pdfViewer');
                 const context = canvas.getContext('2d');
                 
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                // Get device pixel ratio for high-DPI displays
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                
+                // Set canvas size for display
+                canvas.style.width = viewport.width + 'px';
+                canvas.style.height = viewport.height + 'px';
+                
+                // Set actual canvas size in memory (scaled by device pixel ratio)
+                canvas.width = viewport.width * devicePixelRatio;
+                canvas.height = viewport.height * devicePixelRatio;
+                
+                // Scale the drawing context so everything draws at the correct size
+                context.scale(devicePixelRatio, devicePixelRatio);
                 
                 const pageContainer = document.getElementById('pageContainer');
-                pageContainer.style.width = canvas.width + 'px';
-                pageContainer.style.height = canvas.height + 'px';
+                pageContainer.style.width = viewport.width + 'px';
+                pageContainer.style.height = viewport.height + 'px';
                 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 
@@ -400,7 +419,7 @@
                 const scaleY = screenHeight / viewport.height;
                 
                 // Maintain aspect ratio and ensure it fits within screen
-                return Math.min(scaleX, scaleY) * 0.9; // Adjust to 90% to avoid scrolling
+                return Math.min(scaleX, scaleY) * 0.9;
             } else {
                 // Normal viewing mode
                 // Use actual padding values instead of fixed 40px
@@ -410,7 +429,8 @@
                 const scaleY = (containerHeight - actualPadding) / viewport.height;
                 
                 if (isMobile) {
-                    // On mobile, always fit to width for better readability
+                    // On mobile, fit to width for better readability
+                    // The devicePixelRatio scaling in renderPage will handle the quality
                     return scaleX;
                 } else {
                     // On desktop, fit to container while maintaining aspect ratio
